@@ -43,12 +43,12 @@ dependencies:
   - joblib=1.0.0=pyhd8ed1ab_0
   - json5=0.9.5=pyh9f0ad1d_0
   - jsonschema=3.2.0=py_2
-  - jupyter_client=6.1.7=py_0
+  - jupyter_client=6.1.11=pyhd8ed1ab_0
   - jupyter_core=4.7.0=py37h89c1867_0
   - jupyter_server=1.2.1=py37h89c1867_0
-  - jupyterlab=3.0.2=pyhd8ed1ab_0
+  - jupyterlab=3.0.3=pyhd8ed1ab_0
   - jupyterlab_pygments=0.1.2=pyh9f0ad1d_0
-  - jupyterlab_server=2.1.0=pyhd8ed1ab_0
+  - jupyterlab_server=2.1.1=pyhd8ed1ab_0
   - keras-applications=1.0.8=py_1
   - keras-preprocessing=1.1.0=py_0
   - krb5=1.17.2=h926e7f8_0
@@ -138,4 +138,3 @@ dependencies:
   - zipp=3.4.0=py_0
   - zlib=1.2.11=h516909a_1010
 prefix: /home/luknw/.conda/envs/um-lime
-
