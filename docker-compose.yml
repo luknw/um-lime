@@ -1,8 +1,8 @@
 version: "3.2"
 services:
   jupyter:
-    image: agh/ml-lime
-    container_name: ml-lime
+    image: agh/um-lime
+    container_name: um-lime
     volumes:
       - type: "bind"
         source: ./
