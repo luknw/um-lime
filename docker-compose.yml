@@ -1,0 +1,11 @@
+version: "3.2"
+services:
+  jupyter:
+    image: agh/ml-lime
+    container_name: ml-lime
+    volumes:
+      - type: "bind"
+        source: ./
+        target: /opt/notebooks
+    ports:
+      - 8888:8888
