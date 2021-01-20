@@ -8,6 +8,7 @@ RUN pip3 install numpy scipy scikit-image jupyterlab seaborn pandas lime
 RUN pip3 install scikit-learn==0.24.0
 RUN pip3 install tensorflow==2.4.0
 RUN pip3 install plotly
+RUN pip3 install ipywidgets
 
 
 EXPOSE 8888
