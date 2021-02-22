@@ -1,16 +1,20 @@
 # um-lime
 LIME project for the Machine Learning course
 
-# Tutorial
+# Setup
+Go to `active-learning` directory.  
+Setup virtual environment and install dependencies by executing:
+```
+virtualenv venv --python=python3.7
+source venv/bin/activate
+pip install -r requirements.txt
+```
+You can use python3 version of your choice but be aware that it may not work with >= 3.8.  
+Run the app with:
+```
+python app.py
+```
 
-You will need a Docker and docker-compose on your machine to run the tutorial.
+# Application
+Application demonstrates active learning on wine dataset. (Not yet but hopefully soon.) Based on Dash sample applications (https://github.com/plotly/dash-sample-apps)
 
-## Installation
-1. Clone the repository
-2. Checkout the segmentation branch `git checkout segmentation`
-2. Execute `docker build -t agh/um-lime .`. (Building an image maight take a few minutes)
-3. Run the container with `docker-compose up`.
-
-## Clean up
-1. Remove the container with `docker-compose down -v`.
-2. Remove the image with `docker rmi agh/um-lime`.
