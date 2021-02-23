@@ -19,7 +19,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.svm import SVC
-from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 
 label_mapping = {
     1: "Class 1",
@@ -46,13 +46,13 @@ intro_text = """
 This app demonstrates active learning process. //TODO
 """
 
-tsne = TSNE(
+pca = PCA(
     n_components=2
 )
 
-X_hat = tsne.fit_transform(X)
+X_hat = pca.fit_transform(X)
 
-def create_tsne_graph(data):
+def create_pca_graph(data):
     colors = px.colors.qualitative.Pastel
     traces = []
     for i, key in enumerate(label_mapping.keys()):
@@ -188,10 +188,10 @@ app.layout = html.Div(
                     style={"width": "60vw"},
                     children=[
                         html.Div(
-                            id="tsne-graph-div",
+                            id="pca-graph-div",
                             children=[
                                 html.Div(
-                                    id="tsne-graph-outer",
+                                    id="pca-graph-outer",
                                     children=[
                                         # html.Div(
                                         # id="intro-text",
@@ -199,11 +199,11 @@ app.layout = html.Div(
                                         # ),
                                         html.H3(
                                             className="graph-title",
-                                            children="Wine Dataset Reduced to 2 Dimensions with T-SNE",
+                                            children="Wine Dataset Reduced to 2 Dimensions with PCA",
                                         ),
                                         dcc.Graph(
-                                            id="tsne-graph",
-                                            figure=create_tsne_graph("Not labeled"),
+                                            id="pca-graph",
+                                            figure=create_pca_graph("Not labeled"),
                                         ),
                                     ],
                                 )
@@ -341,17 +341,17 @@ def add_to_common(df):
     y = df.iloc[:,0]
     X = X.append(x, ignore_index=True)
     Y = Y.append(y, ignore_index=True)
-    X_hat = tsne.fit_transform(X)
+    X_hat = pca.fit_transform(X)
     
 @app.callback(
-    Output("tsne-graph", "figure"),
+    Output("pca-graph", "figure"),
     [Input("train-test-dropdown", "value")]
 )
 def display_train_test(value):
-    return create_tsne_graph(value)
+    return create_pca_graph(value)
 
 
-@app.callback(Output("hover-point-graph", "children"), [Input("tsne-graph", "hoverData")])
+@app.callback(Output("hover-point-graph", "children"), [Input("pca-graph", "hoverData")])
 def display_selected_point(hoverData):
     if not hoverData:
         return printPoint(X_train.iloc[0,:])
@@ -368,7 +368,7 @@ def printPoint(point):
 
 @app.callback(
     [Output("explanation-graphs", "children"), Output("prediction", "children")],
-    [Input("tsne-graph", "clickData")],
+    [Input("pca-graph", "clickData")],
 )
 def display_selected_point(clickData):
     if not clickData:
