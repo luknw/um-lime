@@ -52,12 +52,12 @@ This app demonstrates active learning process.
 pca = PCA(
     n_components=2
 )
-pca.fit(X_train)
-
-X_train_pca = pca.transform(X_train)
-X_test_pca = pca.transform(X_test)
 
 def create_pca_graph(data):
+    pca.fit(X_train)
+    X_train_pca = pca.transform(X_train)
+    X_test_pca = pca.transform(X_test)
+    
     colors = px.colors.qualitative.Pastel
     traces = []
     for i, key in enumerate(label_mapping.keys()):
@@ -117,7 +117,7 @@ def create_pca_graph(data):
             "name": label_mapping[key],
             "text": label_mapping[key],
             "customdata": list(zip([False] * len(idx[0]), idx[0])),
-            "opacity": 0.2,
+            "opacity": 0.3,
             "hoverinfo": hoverinfo,
             "visible": visible,
             "showlegend": showlegend,
@@ -375,10 +375,9 @@ def display_selected_point(clickData):
 
     is_train, idx = clickData["points"][0]["customdata"]
     X = X_train if is_train else X_test
-    Y = y_train if is_train else y_test
     x = X.iloc[idx,:]
 
-    exp = explainer.explain_instance(x, svc.predict_proba, num_features=len(X_train.columns), top_labels=len(label_mapping))
+    exp = explainer.explain_instance(x, svc.predict_proba, num_features=len(X_train.columns), top_labels=len(label_mapping), num_samples=100)
     
     obj = html.Iframe(
             # Javascript is disabled from running in an Iframe for security reasons
@@ -389,24 +388,40 @@ def display_selected_point(clickData):
             style={'border': '0'},
         )
     
-#     drop = dcc.Dropdown(
-#         id='label-dropdown',
-#         options=[
-#             {'label': 'New York City', 'value': 'NYC'},
-#             {'label': 'Montreal', 'value': 'MTL'},
-#             {'label': 'San Francisco', 'value': 'SF'}
-#         ],
-#         value='NYC'
-#     )
+    drop = dcc.Dropdown(
+        id='label-dropdown',
+        options=[
+            {'label': v, 'value': k}
+            for k, v in label_mapping.items()
+        ],
+        value=None
+    )
     
     return [
-        None,
-#         drop,
+        drop,
         obj,
         [
-            f"True label: {label_mapping[Y.iloc[idx]]}" 
+            f"True label: {label_mapping[y_train.iloc[idx]] if is_train else 'unknown'}" 
         ]
     ]
+
+@app.callback(Output('label-dropdown', 'value'), [Input("pca-graph", "clickData"), Input('label-dropdown', 'value')])
+def update_output(clickData, value):
+    if not clickData:
+        raise dash.exceptions.PreventUpdate
+    
+    if value is None:
+        return value
+    
+    is_train, idx = clickData["points"][0]["customdata"]
+    
+    y = y_train if is_train else y_test
+    X = X_train if is_train else X_test
+    
+    y.drop(idx, inplace=True)
+    X.drop(idx, inplace=True)
+    
+    return value
 
 
 if __name__ == "__main__":
