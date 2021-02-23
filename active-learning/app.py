@@ -17,7 +17,7 @@ import lime.lime_tabular
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.decomposition import PCA
 
@@ -27,14 +27,17 @@ label_mapping = {
     3: "Class 3"
 }
 
-wine = pd.read_csv("./wine/wine-test.csv", sep=';')
-X = wine.iloc[:,1:]
-Y = wine.iloc[:,0]
+# train and test switch roles to present active learning
+wine_test = pd.read_csv("./wine/wine-test.csv", sep=';')
+X_train = wine_test.iloc[:,1:]
+y_train = wine_test.iloc[:,0]
 
-X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+wine_train = pd.read_csv("./wine/wine-train.csv", sep=';')
+X_test = wine_train.iloc[:,1:]
+y_test = wine_train.iloc[:,0]
 
 svc = make_pipeline(
-    MinMaxScaler(),
+    StandardScaler(),
     SVC(probability=True)
 )
 
@@ -43,14 +46,16 @@ svc.fit(X_train, y_train)
 explainer = lime.lime_tabular.LimeTabularExplainer(X_train.to_numpy(), feature_names=list(X_train.columns), class_names=label_mapping.values(), discretize_continuous=True)
 
 intro_text = """
-This app demonstrates active learning process. //TODO
+This app demonstrates active learning process.
 """
 
 pca = PCA(
     n_components=2
 )
+pca.fit(X_train)
 
-X_hat = pca.fit_transform(X)
+X_train_pca = pca.transform(X_train)
+X_test_pca = pca.transform(X_test)
 
 def create_pca_graph(data):
     colors = px.colors.qualitative.Pastel
@@ -58,8 +63,8 @@ def create_pca_graph(data):
     for i, key in enumerate(label_mapping.keys()):
         # Labeled data
         idx = np.where(y_train == key)
-        x = X_hat[idx, 0].flatten()
-        y = X_hat[idx, 1].flatten()
+        x = X_train_pca[idx, 0].flatten()
+        y = X_train_pca[idx, 1].flatten()
         if data in ["Labeled", "All"]:
             opacity = 0.9
             hoverinfo = "all"
@@ -75,30 +80,28 @@ def create_pca_graph(data):
             "y": y,
             "mode": "markers",
             "type": "scattergl",
-            "marker": {"color": colors[i], "size": 3},
+            "marker": {"color": colors[i], "size": 10},
             "name": label_mapping[key],
             "text": label_mapping[key],
-            "customdata": idx[0],
+            "customdata": list(zip([True] * len(idx[0]), idx[0])),
             "opacity": opacity,
             "hoverinfo": hoverinfo,
             "visible": visible,
             "showlegend": showlegend,
-            "selected": {"marker": {"size": 10, "color": "black"}},
+            "selected": {"marker": {"size": 25, "color": colors[i]}},
         }
         traces.append(trace)
 
     for i, key in enumerate(label_mapping.keys()):
         # Not labeled data
         idx = np.where(y_test == key)
-        x = X_hat[idx, 0].flatten()
-        y = X_hat[idx, 1].flatten()
+        x = X_test_pca[idx, 0].flatten()
+        y = X_test_pca[idx, 1].flatten()
         if data in ["Not labeled", "All"]:
-            opacity = 0.9
             hoverinfo = "all"
             showlegend = True if data == "Not labeled" else False
             visible = True
         else:
-            opacity = 0.5
             hoverinfo = "none"
             showlegend = False
             visible = "legendonly"
@@ -107,15 +110,18 @@ def create_pca_graph(data):
             "y": y,
             "mode": "markers",
             "type": "scattergl",
-            "marker": {"color": colors[i], "size": 3},
+            "marker": {
+                "color": colors[i],
+                "size": 10
+            },
             "name": label_mapping[key],
             "text": label_mapping[key],
-            "customdata": idx[0],
-            "opacity": opacity,
+            "customdata": list(zip([False] * len(idx[0]), idx[0])),
+            "opacity": 0.2,
             "hoverinfo": hoverinfo,
             "visible": visible,
             "showlegend": showlegend,
-            "selected": {"marker": {"size": 10, "color": "black"}},
+            "selected": {"marker": {"size": 25, "color": colors[i]}},
         }
         traces.append(trace)
 
@@ -217,6 +223,7 @@ app.layout = html.Div(
                                     id="prediction-div",
                                     className="img-card",
                                     children=[
+                                        html.Div(id="choose-label"),
                                         html.Div(
                                             id="selected-data-graph-outer",
                                             children=[
@@ -317,7 +324,6 @@ def clear_upload(n_clicks_clear, n_clicks_add_labeled, n_clicks_add_not_labeled,
     
 def add_to_labeled(df):
     global X_train, y_train, explainer
-    add_to_common(df)
     
     x = df.iloc[:,1:]
     y = df.iloc[:,0]
@@ -328,20 +334,12 @@ def add_to_labeled(df):
 
 def add_to_not_labeled(df):
     global X_test, y_test
-    add_to_common(df)
     
     x = df.iloc[:,1:]
     y = df.iloc[:,0]
     X_test = X_test.append(x, ignore_index=True)
     y_test = y_test.append(y, ignore_index=True)
-    
-def add_to_common(df):
-    global X_hat, X, Y
-    x = df.iloc[:,1:]
-    y = df.iloc[:,0]
-    X = X.append(x, ignore_index=True)
-    Y = Y.append(y, ignore_index=True)
-    X_hat = pca.fit_transform(X)
+
     
 @app.callback(
     Output("pca-graph", "figure"),
@@ -355,7 +353,8 @@ def display_train_test(value):
 def display_selected_point(hoverData):
     if not hoverData:
         return printPoint(X_train.iloc[0,:])
-    idx = hoverData["points"][0]["customdata"]
+    is_train, idx = hoverData["points"][0]["customdata"]
+    X = X_train if is_train else X_test
     return printPoint(X.iloc[idx,:])
 
 def printPoint(point):
@@ -367,17 +366,19 @@ def printPoint(point):
     return with_br
 
 @app.callback(
-    [Output("explanation-graphs", "children"), Output("prediction", "children")],
+    [Output("choose-label", "children"), Output("explanation-graphs", "children"), Output("prediction", "children")],
     [Input("pca-graph", "clickData")],
 )
 def display_selected_point(clickData):
     if not clickData:
         raise dash.exceptions.PreventUpdate
 
-    idx = clickData["points"][0]["customdata"]
+    is_train, idx = clickData["points"][0]["customdata"]
+    X = X_train if is_train else X_test
+    Y = y_train if is_train else y_test
     x = X.iloc[idx,:]
 
-    exp = explainer.explain_instance(x, svc.predict_proba, num_features=len(X.columns), top_labels=len(label_mapping))
+    exp = explainer.explain_instance(x, svc.predict_proba, num_features=len(X_train.columns), top_labels=len(label_mapping))
     
     obj = html.Iframe(
             # Javascript is disabled from running in an Iframe for security reasons
@@ -388,7 +389,19 @@ def display_selected_point(clickData):
             style={'border': '0'},
         )
     
+#     drop = dcc.Dropdown(
+#         id='label-dropdown',
+#         options=[
+#             {'label': 'New York City', 'value': 'NYC'},
+#             {'label': 'Montreal', 'value': 'MTL'},
+#             {'label': 'San Francisco', 'value': 'SF'}
+#         ],
+#         value='NYC'
+#     )
+    
     return [
+        None,
+#         drop,
         obj,
         [
             f"True label: {label_mapping[Y.iloc[idx]]}" 
@@ -397,4 +410,4 @@ def display_selected_point(clickData):
 
 
 if __name__ == "__main__":
-    app.run_server(debug=False)
+    app.run_server(debug=True)
